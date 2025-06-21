@@ -1,0 +1,192 @@
+{
+  "name": "meeting-agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "af369883-71f0-4597-b8df-4702d1579207",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        20,
+        300
+      ],
+      "id": "b5bcd2fa-f300-4764-9457-8aeed09d09a9",
+      "name": "Webhook",
+      "webhookId": "af369883-71f0-4597-b8df-4702d1579207"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        20
+      ],
+      "id": "2c85b5d6-a3a6-4564-8dc8-1b9bab894485",
+      "name": "When chat message received",
+      "webhookId": "6a56e80c-a039-4eae-994b-7b6f51037065"
+    },
+    {
+      "parameters": {
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        720,
+        20
+      ],
+      "id": "60a217ad-bb19-4299-a898-0751a4bdcd8e",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "mindcraft-gpt4o",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+      "typeVersion": 1,
+      "position": [
+        740,
+        180
+      ],
+      "id": "90a9daa4-edb4-46ef-9150-d265752a3329",
+      "name": "Azure OpenAI Chat Model",
+      "credentials": {
+        "azureOpenAiApi": {
+          "id": "Fe8AnacFJVVOrlSa",
+          "name": "Azure Open AI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItems = $input.all();\nconst output = [];\n\nfor (const item of inputItems) {\n  const transcript = item.json.text;\n  \n  if (typeof transcript === 'string' && transcript.trim() !== '') {\n    const taskBlocks = transcript.split(/\\d+\\.\\s\\*\\*/);\n\n    for (let block of taskBlocks) {\n      block = block.trim();\n      if (!block) continue;\n\n      const titleMatch = block.match(/^(.+?)\\*\\*/);  // **Task**\n      const responsibleMatch = block.match(/Responsible:\\s*(.+)/);\n\n      if (titleMatch && responsibleMatch) {\n        const summary = titleMatch[1].trim();\n        const person = responsibleMatch[1].split('\\n')[0].trim();\n\n        output.push({\n          json: {\n            summary: `Task: ${summary}`,\n            description: `Assigned to ${person}`,\n            start: new Date().toISOString(),\n            end: new Date(Date.now() + 60 * 60 * 1000).toISOString()\n          }\n        });\n      }\n    }\n  }\n}\n\nreturn output;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        20
+      ],
+      "id": "000eb445-3b18-4eef-a966-64287e2c0c39",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "fake1mail2345@gmail.com",
+          "mode": "list",
+          "cachedResultName": "fake1mail2345@gmail.com"
+        },
+        "start": "={{$json[\"start\"]}}",
+        "end": "={{$json[\"end\"]}}",
+        "additionalFields": {
+          "description": "={{$json[\"description\"]}}",
+          "summary": "={{$json[\"summary\"]}}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1300,
+        20
+      ],
+      "id": "419d8407-af6e-4da0-9c42-aeceb44ea790",
+      "name": "Google Calendar",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "2qS3Zj0Pi3yHSCuZ",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        20
+      ],
+      "id": "6079271d-caa5-44a3-9aba-23c021d0ba21",
+      "name": "Wait",
+      "webhookId": "2a3a2233-d6d0-4405-8b68-52de80e763a9"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Azure OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3d66b934-ff20-4565-ae6d-fdc435fd9b62",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aeb43dd3abdd3dddc0c5a505427d266a318794e35093e0daa04e58278d3bbf54"
+  },
+  "id": "fFHt7wqIBgZHaE8T",
+  "tags": []
+}
